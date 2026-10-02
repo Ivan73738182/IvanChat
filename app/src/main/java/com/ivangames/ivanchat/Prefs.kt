@@ -8,6 +8,7 @@ object Prefs {
     private const val KEY_NICKNAME = "nickname"
     private const val KEY_CHAT_KEY = "chat_key"
     private const val KEY_USER_ID = "user_id"
+    private const val KEY_AVATAR = "avatar"
 
     fun setNickname(ctx: Context, value: String) {
         ctx.getSharedPreferences(NAME, Context.MODE_PRIVATE)
@@ -37,5 +38,15 @@ object Prefs {
     fun getUserId(ctx: Context): String {
         return ctx.getSharedPreferences(NAME, Context.MODE_PRIVATE)
             .getString(KEY_USER_ID, "") ?: ""
+    }
+
+    fun setAvatar(ctx: Context, value: String) {
+        ctx.getSharedPreferences(NAME, Context.MODE_PRIVATE)
+            .edit().putString(KEY_AVATAR, value).apply()
+    }
+
+    fun getAvatar(ctx: Context): String {
+        return ctx.getSharedPreferences(NAME, Context.MODE_PRIVATE)
+            .getString(KEY_AVATAR, "😎") ?: "😎"
     }
 }

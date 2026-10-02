@@ -16,14 +16,23 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var keyInput: EditText
     private lateinit var enterBtn: Button
     private lateinit var statusText: TextView
+    private lateinit var avatarText: TextView
+    private lateinit var avatarPicker: TextView
 
     private lateinit var auth: FirebaseAuth
     private lateinit var db: FirebaseFirestore
 
+    private var selectedAvatar: String = "😎"
+
+    private val avatars = listOf(
+        "😎", "🐱", "🐉", "🦊", "🐼", "🦁",
+        "🤖", "👽", "🐸", "🐺", "🦄", "👾"
+    )
+    private var avatarIndex = 0
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Если уже вошли — сразу в MainActivity
         auth = FirebaseAuth.getInstance()
         if (auth.currentUser != null && Prefs.getChatKey(this).isNotEmpty() && Prefs.getNickname(this).isNotEmpty()) {
             startActivity(Intent(this, MainActivity::class.java))
@@ -32,17 +41,32 @@ class LoginActivity : AppCompatActivity() {
         }
 
         setContentView(R.layout.activity_login)
-
         db = FirebaseFirestore.getInstance()
 
         nickInput = findViewById(R.id.nickInput)
         keyInput = findViewById(R.id.keyInput)
         enterBtn = findViewById(R.id.enterBtn)
         statusText = findViewById(R.id.statusText)
+        avatarText = findViewById(R.id.avatarText)
+        avatarPicker = findViewById(R.id.avatarPicker)
 
-        // Подставляем сохранённый ник и ключ
         nickInput.setText(Prefs.getNickname(this))
         keyInput.setText(Prefs.getChatKey(this))
+        selectedAvatar = Prefs.getAvatar(this)
+        avatarText.text = selectedAvatar
+
+        // Тап на аватар — открывает выбор
+        avatarText.setOnClickListener {
+            avatarIndex = (avatars.indexOf(selectedAvatar) + 1) % avatars.size
+            if (avatarIndex < 0) avatarIndex = 0
+            selectedAvatar = avatars[avatarIndex]
+            avatarText.text = selectedAvatar
+        }
+
+        // Тап на текст-подсказку — тоже
+        avatarPicker.setOnClickListener {
+            avatarText.performClick()
+        }
 
         enterBtn.setOnClickListener {
             val nick = nickInput.text.toString().trim()
@@ -80,16 +104,19 @@ class LoginActivity : AppCompatActivity() {
                     return@addOnCompleteListener
                 }
 
-                // Сохраняем локально
                 Prefs.setUserId(this, user.uid)
                 Prefs.setNickname(this, nick)
                 Prefs.setChatKey(this, key)
+                Prefs.setAvatar(this, selectedAvatar)
 
-                // Регистрируем пользователя в Firestore
                 val userData = hashMapOf(
                     "nickname" to nick,
-                    "createdAt" to System.currentTimeMillis()
+                    "avatar" to selectedAvatar,
+                    "createdAt" to System.currentTimeMillis(),
+                    "online" to true,
+                    "lastSeen" to System.currentTimeMillis()
                 )
+
                 db.collection("users").document(user.uid)
                     .set(userData)
                     .addOnCompleteListener { t2 ->
