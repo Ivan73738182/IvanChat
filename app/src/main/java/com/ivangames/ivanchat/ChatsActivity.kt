@@ -4,8 +4,8 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
+import android.widget.PopupMenu
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -19,7 +19,7 @@ class ChatsActivity : AppCompatActivity() {
     private lateinit var chatsList: RecyclerView
     private lateinit var myAvatar: TextView
     private lateinit var headerText: TextView
-    private lateinit var logoutBtn: Button
+    private lateinit var menuBtn: Button
     private lateinit var emptyText: TextView
 
     private lateinit var adapter: ChatAdapter
@@ -44,8 +44,7 @@ class ChatsActivity : AppCompatActivity() {
 
         auth = FirebaseAuth.getInstance()
         if (auth.currentUser == null) {
-            startActivity(Intent(this, LoginActivity::class.java))
-            finish()
+            goToLogin()
             return
         }
 
@@ -58,15 +57,14 @@ class ChatsActivity : AppCompatActivity() {
         myCode = Prefs.getGroupCode(this)
 
         if (myId.isEmpty() || myCode.isEmpty()) {
-            startActivity(Intent(this, LoginActivity::class.java))
-            finish()
+            goToLogin()
             return
         }
 
         chatsList = findViewById(R.id.chatsList)
         myAvatar = findViewById(R.id.myAvatar)
         headerText = findViewById(R.id.headerText)
-        logoutBtn = findViewById(R.id.logoutBtn)
+        menuBtn = findViewById(R.id.menuBtn)
         emptyText = findViewById(R.id.emptyText)
 
         myAvatar.text = myAvatarStr
@@ -78,9 +76,7 @@ class ChatsActivity : AppCompatActivity() {
         chatsList.layoutManager = LinearLayoutManager(this)
         chatsList.adapter = adapter
 
-        logoutBtn.setOnClickListener {
-            showLogoutDialog()
-        }
+        menuBtn.setOnClickListener { showMenu() }
     }
 
     override fun onStart() {
@@ -107,6 +103,11 @@ class ChatsActivity : AppCompatActivity() {
         chatsListener = null
     }
 
+    private fun goToLogin() {
+        startActivity(Intent(this, LoginActivity::class.java))
+        finish()
+    }
+
     private fun setOnline(online: Boolean) {
         if (myId.isEmpty()) return
         db.collection("users").document(myId)
@@ -116,7 +117,6 @@ class ChatsActivity : AppCompatActivity() {
             )
     }
 
-    // ==== СЛУШАЕМ ВСЕХ ПОЛЬЗОВАТЕЛЕЙ ГРУППЫ ====
     private fun listenGroupUsers() {
         usersListener = db.collection("users")
             .whereEqualTo("groupCode", myCode)
@@ -127,10 +127,14 @@ class ChatsActivity : AppCompatActivity() {
                 groupUsers.clear()
                 for (doc in snapshot.documents) {
                     val uid = doc.id
-                    if (uid == myId) continue // себя не показываем
+                    if (uid == myId) continue // себя по ID скрываем
 
                     val nick = doc.getString("nickname") ?: "?"
                     val avatar = doc.getString("avatar") ?: "👤"
+
+                    // ФИЛЬТР: скрываем свои старые аккаунты (по нику + аватару)
+                    if (nick == myNick && avatar == myAvatarStr) continue
+
                     val online = doc.getBoolean("online") ?: false
                     val lastSeen = doc.getLong("lastSeen") ?: 0L
 
@@ -141,7 +145,6 @@ class ChatsActivity : AppCompatActivity() {
             }
     }
 
-    // ==== СЛУШАЕМ МОИ ЧАТЫ (для lastMessage) ====
     private fun listenChats() {
         chatsListener = db.collection("chats")
             .whereArrayContains("members", myId)
@@ -177,7 +180,6 @@ class ChatsActivity : AppCompatActivity() {
             }
     }
 
-    // ==== СОБИРАЕМ СПИСОК: все из группы + их чаты ====
     private fun rebuildChatList() {
         val chatList = mutableListOf<Chat>()
 
@@ -199,7 +201,6 @@ class ChatsActivity : AppCompatActivity() {
             )
         }
 
-        // Сортировка: сначала те, с кем последнее сообщение свежее, потом по алфавиту
         val sorted = chatList.sortedWith(
             compareByDescending<Chat> { it.lastTime }.thenBy { it.title }
         )
@@ -210,14 +211,12 @@ class ChatsActivity : AppCompatActivity() {
         chatsList.visibility = if (sorted.isEmpty()) View.GONE else View.VISIBLE
     }
 
-    // Уникальный chatId для пары
     private fun makeChatId(id1: String, id2: String): String {
         val sorted = listOf(id1, id2).sorted()
         return "chat_${sorted[0]}_${sorted[1]}"
     }
 
     private fun openChat(chat: Chat) {
-        // Создаём документ чата, если ещё нет
         val ids = listOf(myId, chat.partnerId).sorted()
         val chatId = "chat_${ids[0]}_${ids[1]}"
 
@@ -245,23 +244,61 @@ class ChatsActivity : AppCompatActivity() {
                 intent.putExtra("partnerAvatar", chat.partnerAvatar)
                 startActivity(intent)
             }
-            .addOnFailureListener { e ->
-                Toast.makeText(this, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
+    }
+
+    // ==== МЕНЮ ====
+    private fun showMenu() {
+        val popup = PopupMenu(this, menuBtn)
+        popup.menu.add("🔄 Сменить группу")
+        popup.menu.add("🗑 Очистить мои сообщения (локально)")
+        popup.menu.add("🚪 Выйти из аккаунта")
+
+        popup.setOnMenuItemClickListener { item ->
+            when (item.title.toString()) {
+                "🔄 Сменить группу" -> showChangeGroupDialog()
+                "🗑 Очистить мои сообщения (локально)" -> clearLocalHistory()
+                "🚪 Выйти из аккаунта" -> showLogoutDialog()
             }
+            true
+        }
+        popup.show()
+    }
+
+    private fun showChangeGroupDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Сменить группу?")
+            .setMessage("Приложение перестанет видеть старых друзей. Ник и аватар сохранятся.")
+            .setPositiveButton("Сменить") { _, _ ->
+                setOnline(false)
+                Prefs.setGroupCode(this, "")
+                goToLogin()
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+
+    private fun clearLocalHistory() {
+        AlertDialog.Builder(this)
+            .setTitle("Очистить историю?")
+            .setMessage("Локальная история сообщений будет удалена. На сервере — останется.")
+            .setPositiveButton("Очистить") { _, _ ->
+                // Здесь можно почистить локальный кэш (если добавим)
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
     }
 
     private fun showLogoutDialog() {
         AlertDialog.Builder(this)
-            .setTitle("Выйти из чата?")
-            .setMessage("Придётся вводить ник и код заново.")
+            .setTitle("Выйти из аккаунта?")
+            .setMessage("⚠️ При следующем входе создастся НОВЫЙ аккаунт. Старый останется в базе.")
             .setPositiveButton("Выйти") { _, _ ->
                 setOnline(false)
                 usersListener?.remove()
                 chatsListener?.remove()
                 auth.signOut()
-                Prefs.setUserId(this, "")
-                startActivity(Intent(this, LoginActivity::class.java))
-                finish()
+                Prefs.clear(this)
+                goToLogin()
             }
             .setNegativeButton("Отмена", null)
             .show()
