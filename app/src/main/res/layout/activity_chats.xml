@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#101018">
+
+    <!-- Верхняя панель -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:orientation="horizontal"
+        android:background="#1A1A28"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp">
+
+        <TextView
+            android:id="@+id/myAvatar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="😎"
+            android:textSize="32sp"
+            android:layout_marginEnd="12dp" />
+
+        <TextView
+            android:id="@+id/headerText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Чаты"
+            android:textColor="#66DDA0"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/newChatBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="+"
+            android:textSize="22sp"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#3CAE6E"
+            android:minWidth="52dp"
+            android:layout_marginEnd="8dp" />
+
+        <Button
+            android:id="@+id/logoutBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="×"
+            android:textSize="18sp"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#B04040"
+            android:minWidth="48dp" />
+
+    </LinearLayout>
+
+    <!-- Список чатов -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/chatsList"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="8dp"
+        android:clipToPadding="false" />
+
+</LinearLayout>
