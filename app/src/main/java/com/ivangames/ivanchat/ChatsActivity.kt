@@ -20,6 +20,7 @@ class ChatsActivity : AppCompatActivity() {
     private lateinit var headerText: TextView
     private lateinit var newChatBtn: Button
     private lateinit var logoutBtn: Button
+    private lateinit var emptyText: TextView
 
     private lateinit var adapter: ChatAdapter
     private lateinit var db: FirebaseFirestore
@@ -59,6 +60,7 @@ class ChatsActivity : AppCompatActivity() {
         headerText = findViewById(R.id.headerText)
         newChatBtn = findViewById(R.id.newChatBtn)
         logoutBtn = findViewById(R.id.logoutBtn)
+        emptyText = findViewById(R.id.emptyText)
 
         myAvatar.text = myAvatarStr
         headerText.text = "Чаты • $myNick"
@@ -120,20 +122,6 @@ class ChatsActivity : AppCompatActivity() {
 
                 val chatList = mutableListOf<Chat>()
 
-                // Общий чат — всегда первый
-                chatList.add(
-                    Chat(
-                        id = "general",
-                        isGroup = true,
-                        title = "Общий чат",
-                        partnerNick = "",
-                        partnerAvatar = "💬",
-                        partnerId = "",
-                        lastMessage = "",
-                        lastTime = 0L
-                    )
-                )
-
                 for (doc in snapshot.documents) {
                     try {
                         val chatId = doc.id
@@ -141,7 +129,7 @@ class ChatsActivity : AppCompatActivity() {
                         if (members.size != 2) continue
 
                         val partnerId = members.firstOrNull { it != myId } as? String ?: continue
-                        val partnerNick = doc.getString("partnerNick_$myId") ?: doc.getString("nick_$partnerId") ?: "Друг"
+                        val partnerNick = doc.getString("partnerNick_$myId") ?: "Друг"
                         val partnerAvatar = doc.getString("avatar_$partnerId") ?: "👤"
                         val lastMessage = doc.getString("lastMessage_$myId") ?: ""
                         val lastTime = doc.getLong("lastTime") ?: 0L
@@ -163,14 +151,13 @@ class ChatsActivity : AppCompatActivity() {
                     }
                 }
 
-                // Сортируем: общий первый, остальные по lastTime
-                val general = chatList.firstOrNull { it.isGroup }
-                val others = chatList.filter { !it.isGroup }.sortedByDescending { it.lastTime }
-                val sorted = mutableListOf<Chat>()
-                if (general != null) sorted.add(general)
-                sorted.addAll(others)
-
+                // Сортируем по времени последнего сообщения
+                val sorted = chatList.sortedByDescending { it.lastTime }
                 adapter.setChats(sorted)
+
+                // Пустое состояние
+                emptyText.visibility = if (sorted.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
+                chatsList.visibility = if (sorted.isEmpty()) android.view.View.GONE else android.view.View.VISIBLE
             }
     }
 
@@ -179,7 +166,7 @@ class ChatsActivity : AppCompatActivity() {
         intent.putExtra("chatId", chat.id)
         intent.putExtra("title", chat.title)
         intent.putExtra("partnerId", chat.partnerId)
-        intent.putExtra("isGroup", chat.isGroup)
+        intent.putExtra("isGroup", false)
         intent.putExtra("partnerAvatar", chat.partnerAvatar)
         startActivity(intent)
     }

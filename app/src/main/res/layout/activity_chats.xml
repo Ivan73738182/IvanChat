@@ -5,7 +5,6 @@
     android:orientation="vertical"
     android:background="#101018">
 
-    <!-- Верхняя панель -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="60dp"
@@ -55,13 +54,28 @@
 
     </LinearLayout>
 
-    <!-- Список чатов -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/chatsList"
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:padding="8dp"
-        android:clipToPadding="false" />
+        android:layout_weight="1">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/chatsList"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="8dp"
+            android:clipToPadding="false" />
+
+        <TextView
+            android:id="@+id/emptyText"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="Пока нет чатов.\n\nНажми ➕ вверху,\nчтобы начать новый чат."
+            android:textColor="#707080"
+            android:textSize="18sp"
+            android:gravity="center"
+            android:visibility="gone" />
+
+    </FrameLayout>
 
 </LinearLayout>

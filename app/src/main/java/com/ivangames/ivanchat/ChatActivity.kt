@@ -29,7 +29,6 @@ class ChatActivity : AppCompatActivity() {
     private var chatId: String = ""
     private var chatTitle: String = ""
     private var partnerId: String = ""
-    private var isGroup: Boolean = false
     private var partnerAvatar: String = "👤"
 
     private var myId: String = ""
@@ -46,11 +45,15 @@ class ChatActivity : AppCompatActivity() {
         myNick = Prefs.getNickname(this)
         myKey = Prefs.getChatKey(this)
 
-        chatId = intent.getStringExtra("chatId") ?: "general"
+        chatId = intent.getStringExtra("chatId") ?: ""
         chatTitle = intent.getStringExtra("title") ?: "Чат"
         partnerId = intent.getStringExtra("partnerId") ?: ""
-        isGroup = intent.getBooleanExtra("isGroup", true)
         partnerAvatar = intent.getStringExtra("partnerAvatar") ?: "👤"
+
+        if (chatId.isEmpty()) {
+            finish()
+            return
+        }
 
         messagesList = findViewById(R.id.messagesList)
         messageInput = findViewById(R.id.messageInput)
@@ -60,7 +63,7 @@ class ChatActivity : AppCompatActivity() {
         avatarText = findViewById(R.id.chatAvatarText)
 
         titleText.text = chatTitle
-        avatarText.text = if (isGroup) "💬" else partnerAvatar
+        avatarText.text = partnerAvatar
 
         adapter = MessageAdapter()
         val layoutManager = LinearLayoutManager(this)
@@ -89,11 +92,8 @@ class ChatActivity : AppCompatActivity() {
         listener = null
     }
 
-    private fun getMessagesRef() = if (isGroup) {
-        db.collection("messages")
-    } else {
+    private fun getMessagesRef() = 
         db.collection("chats").document(chatId).collection("messages")
-    }
 
     private fun listenMessages() {
         listener = getMessagesRef()
@@ -153,15 +153,13 @@ class ChatActivity : AppCompatActivity() {
 
         getMessagesRef().add(data)
             .addOnSuccessListener {
-                // Обновляем последнее сообщение в чате (только для личных)
-                if (!isGroup) {
-                    db.collection("chats").document(chatId)
-                        .update(
-                            "lastMessage_$myId", text,
-                            "lastMessage_$partnerId", text,
-                            "lastTime", System.currentTimeMillis()
-                        )
-                }
+                // Обновляем последнее сообщение в чате
+                db.collection("chats").document(chatId)
+                    .update(
+                        "lastMessage_$myId", text,
+                        "lastMessage_$partnerId", text,
+                        "lastTime", System.currentTimeMillis()
+                    )
             }
             .addOnFailureListener { e ->
                 Toast.makeText(this, "Не отправилось: ${e.message}", Toast.LENGTH_SHORT).show()

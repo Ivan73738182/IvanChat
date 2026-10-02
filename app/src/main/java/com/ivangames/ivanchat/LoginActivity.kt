@@ -35,7 +35,7 @@ class LoginActivity : AppCompatActivity() {
 
         auth = FirebaseAuth.getInstance()
         if (auth.currentUser != null && Prefs.getChatKey(this).isNotEmpty() && Prefs.getNickname(this).isNotEmpty()) {
-            startActivity(Intent(this, MainActivity::class.java))
+            startActivity(Intent(this, ChatsActivity::class.java))
             finish()
             return
         }
@@ -126,7 +126,7 @@ class LoginActivity : AppCompatActivity() {
                             return@addOnCompleteListener
                         }
                         statusText.text = "Успешно! Заходим..."
-                        startActivity(Intent(this, MainActivity::class.java))
+                        startActivity(Intent(this, ChatsActivity::class.java))
                         finish()
                     }
             }
