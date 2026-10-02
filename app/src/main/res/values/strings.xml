@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">IvanChat</string>
+    <string name="login_title">Вход в IvanChat</string>
+    <string name="nickname">Ник</string>
+    <string name="enter">Войти</string>
+    <string name="key_label">Ключ шифрования</string>
+    <string name="key_hint">Введи ключ (например, mysecretkey123)</string>
+</resources>

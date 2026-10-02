@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#101018"
+    android:gravity="center"
+    android:padding="32dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="IvanChat"
+        android:textColor="#66DDA0"
+        android:textSize="44sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="12dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Приватный чат с шифрованием"
+        android:textColor="#A0A0B0"
+        android:textSize="16sp"
+        android:layout_marginBottom="40dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Ник"
+        android:textColor="#D0D0E0"
+        android:textSize="16sp"
+        android:layout_marginBottom="8dp" />
+
+    <EditText
+        android:id="@+id/nickInput"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="#1E1E2A"
+        android:paddingHorizontal="16dp"
+        android:textColor="#FFFFFF"
+        android:textColorHint="#606070"
+        android:textSize="18sp"
+        android:hint="Например: Ваня"
+        android:inputType="textPersonName"
+        android:maxLength="20"
+        android:layout_marginBottom="20dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Ключ шифрования"
+        android:textColor="#D0D0E0"
+        android:textSize="16sp"
+        android:layout_marginBottom="8dp" />
+
+    <EditText
+        android:id="@+id/keyInput"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="#1E1E2A"
+        android:paddingHorizontal="16dp"
+        android:textColor="#FFFFFF"
+        android:textColorHint="#606070"
+        android:textSize="18sp"
+        android:hint="Общий секрет для чата"
+        android:inputType="textPassword"
+        android:layout_marginBottom="12dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="⚠️ Все друзья должны ввести ОДИНАКОВЫЙ ключ — иначе не прочитают сообщения"
+        android:textColor="#F0C060"
+        android:textSize="13sp"
+        android:layout_marginBottom="28dp" />
+
+    <Button
+        android:id="@+id/enterBtn"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:text="Войти"
+        android:textSize="20sp"
+        android:textColor="#FFFFFF"
+        android:backgroundTint="#3CAE6E" />
+
+    <TextView
+        android:id="@+id/statusText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textColor="#A0A0B0"
+        android:textSize="14sp"
+        android:layout_marginTop="24dp"
+        android:gravity="center" />
+
+</LinearLayout>
