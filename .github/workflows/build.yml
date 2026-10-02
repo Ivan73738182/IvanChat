@@ -23,6 +23,7 @@ jobs:
       uses: gradle/gradle-build-action@v2
       with:
         gradle-version: 8.2
+        cache-disabled: true
 
     - name: Decode keystore
       run: |
@@ -31,6 +32,9 @@ jobs:
           "${{ secrets.KEYSTORE_PASSWORD }}" \
           "${{ secrets.KEY_ALIAS }}" \
           "${{ secrets.KEY_PASSWORD }}" > keystore.properties
+
+    - name: Clean
+      run: gradle clean --no-daemon
 
     - name: Build Release APK
       run: gradle assembleRelease --no-daemon
