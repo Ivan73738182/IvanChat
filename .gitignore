@@ -11,3 +11,5 @@ local.properties
 *.jks
 *.jks.base64
 keystore.properties
+icon.png
+icon_fixed.png
