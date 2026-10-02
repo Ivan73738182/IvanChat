@@ -34,6 +34,19 @@ class ChatAdapter(
 
     override fun getItemCount(): Int = chats.size
 
+    private fun formatChatTime(timestamp: Long): String {
+        val now = System.currentTimeMillis()
+        val diff = now - timestamp
+        return when {
+            diff < 86400_000L -> timeFormat.format(Date(timestamp))  // сегодня
+            diff < 172800_000L -> "Вчера"                             // вчера
+            else -> {
+                val fmt = SimpleDateFormat("dd.MM", Locale.getDefault())
+                fmt.format(Date(timestamp))                           // давно
+            }
+        }
+    }
+
     inner class ChatViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val chatAvatar: TextView = itemView.findViewById(R.id.chatAvatar)
         private val chatTitle: TextView = itemView.findViewById(R.id.chatTitle)
@@ -46,7 +59,7 @@ class ChatAdapter(
             chatLastMessage.text = if (chat.lastMessage.isEmpty()) "Нет сообщений" else chat.lastMessage
 
             if (chat.lastTime > 0) {
-                chatTime.text = timeFormat.format(Date(chat.lastTime))
+                chatTime.text = formatChatTime(chat.lastTime)
             } else {
                 chatTime.text = ""
             }

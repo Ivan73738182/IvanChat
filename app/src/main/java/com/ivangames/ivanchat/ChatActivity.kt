@@ -12,6 +12,9 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class ChatActivity : AppCompatActivity() {
 
@@ -27,6 +30,7 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var db: FirebaseFirestore
 
     private var listener: ListenerRegistration? = null
+    private var partnerListener: ListenerRegistration? = null
 
     private var chatId: String = ""
     private var chatTitle: String = ""
@@ -67,7 +71,7 @@ class ChatActivity : AppCompatActivity() {
 
         titleText.text = chatTitle
         avatarText.text = partnerAvatar
-        subText.text = "был(а) недавно"
+        subText.text = "..."
 
         adapter = MessageAdapter()
         val layoutManager = LinearLayoutManager(this)
@@ -77,6 +81,8 @@ class ChatActivity : AppCompatActivity() {
 
         sendBtn.setOnClickListener { sendMessage() }
         backBtn.setOnClickListener { finish() }
+
+        listenPartnerStatus()
     }
 
     override fun onStart() {
@@ -88,14 +94,59 @@ class ChatActivity : AppCompatActivity() {
         super.onStop()
         listener?.remove()
         listener = null
+        partnerListener?.remove()
+        partnerListener = null
     }
 
     override fun onDestroy() {
         super.onDestroy()
         listener?.remove()
         listener = null
+        partnerListener?.remove()
+        partnerListener = null
     }
 
+    // ==== ОНЛАЙН-СТАТУС ПАРТНЁРА ====
+    private fun listenPartnerStatus() {
+        if (partnerId.isEmpty()) {
+            subText.text = ""
+            return
+        }
+        partnerListener = db.collection("users").document(partnerId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                if (snapshot == null || !snapshot.exists()) return@addSnapshotListener
+
+                val online = snapshot.getBoolean("online") ?: false
+                val lastSeen = snapshot.getLong("lastSeen") ?: 0L
+
+                subText.text = if (online) {
+                    "в сети"
+                } else {
+                    "был(а) ${formatLastSeen(lastSeen)}"
+                }
+            }
+    }
+
+    private fun formatLastSeen(timestamp: Long): String {
+        if (timestamp == 0L) return "недавно"
+        val diff = System.currentTimeMillis() - timestamp
+        return when {
+            diff < 60_000L -> "только что"
+            diff < 3600_000L -> "${diff / 60_000L} мин назад"
+            diff < 86400_000L -> {
+                val fmt = SimpleDateFormat("HH:mm", Locale.getDefault())
+                "в ${fmt.format(Date(timestamp))}"
+            }
+            diff < 172800_000L -> "вчера"
+            else -> {
+                val fmt = SimpleDateFormat("dd.MM", Locale.getDefault())
+                fmt.format(Date(timestamp))
+            }
+        }
+    }
+
+    // ==== СООБЩЕНИЯ ====
     private fun getMessagesRef() =
         db.collection("chats").document(chatId).collection("messages")
 
