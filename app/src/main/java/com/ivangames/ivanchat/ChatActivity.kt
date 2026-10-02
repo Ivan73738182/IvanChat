@@ -25,7 +25,7 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var messageInput: EditText
     private lateinit var sendBtn: ImageView
     private lateinit var backBtn: ImageView
-    private lateinit var emojiBtn: ImageView
+    private lateinit var emojiBtn: TextView
     private lateinit var emojiPanel: View
     private lateinit var emojiRow: LinearLayout
     private lateinit var titleText: TextView
@@ -49,7 +49,6 @@ class ChatActivity : AppCompatActivity() {
 
     private var emojiVisible = false
 
-    // Массив популярных эмодзи
     private val emojis = listOf(
         "😀", "😁", "😂", "🤣", "😃", "😄", "😅", "😊", "😉", "😍",
         "😘", "😗", "😙", "😚", "😋", "😜", "😝", "😛", "🤑", "🤗",
@@ -107,7 +106,6 @@ class ChatActivity : AppCompatActivity() {
         sendBtn.setOnClickListener { sendMessage() }
         backBtn.setOnClickListener { finish() }
 
-        // ==== СМАЙЛИКИ ====
         buildEmojiPanel()
         emojiBtn.setOnClickListener {
             emojiVisible = !emojiVisible
@@ -158,7 +156,6 @@ class ChatActivity : AppCompatActivity() {
         partnerListener = null
     }
 
-    // ==== ОНЛАЙН-СТАТУС ПАРТНЁРА ====
     private fun listenPartnerStatus() {
         if (partnerId.isEmpty()) {
             subText.text = ""

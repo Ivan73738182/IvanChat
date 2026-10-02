@@ -5,7 +5,6 @@
     android:orientation="vertical"
     android:background="#0E1621">
 
-    <!-- Верхняя панель -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="56dp"
@@ -60,7 +59,6 @@
 
     </LinearLayout>
 
-    <!-- Список сообщений -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/messagesList"
         android:layout_width="match_parent"
@@ -69,7 +67,6 @@
         android:paddingVertical="6dp"
         android:clipToPadding="false" />
 
-    <!-- Панель эмодзи (скрыта по умолчанию) -->
     <HorizontalScrollView
         android:id="@+id/emojiPanel"
         android:layout_width="match_parent"
@@ -88,7 +85,6 @@
 
     </HorizontalScrollView>
 
-    <!-- Панель ввода -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -97,14 +93,14 @@
         android:padding="6dp"
         android:gravity="center_vertical">
 
-        <ImageView
+        <TextView
             android:id="@+id/emojiBtn"
             android:layout_width="42dp"
             android:layout_height="42dp"
-            android:padding="8dp"
-            android:src="@android:drawable/ic_menu_emoticons"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Смайлы" />
+            android:text="😀"
+            android:textSize="22sp"
+            android:gravity="center"
+            android:background="?android:attr/selectableItemBackgroundBorderless" />
 
         <EditText
             android:id="@+id/messageInput"
