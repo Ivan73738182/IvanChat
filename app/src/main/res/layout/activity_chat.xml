@@ -52,7 +52,7 @@
                 android:id="@+id/chatSubText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="был(а) недавно"
+                android:text="..."
                 android:textColor="#7F91A4"
                 android:textSize="13sp" />
 
@@ -69,14 +69,42 @@
         android:paddingVertical="6dp"
         android:clipToPadding="false" />
 
+    <!-- Панель эмодзи (скрыта по умолчанию) -->
+    <HorizontalScrollView
+        android:id="@+id/emojiPanel"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:background="#17212B"
+        android:visibility="gone"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:id="@+id/emojiRow"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="6dp" />
+
+    </HorizontalScrollView>
+
     <!-- Панель ввода -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:background="#17212B"
-        android:padding="8dp"
+        android:padding="6dp"
         android:gravity="center_vertical">
+
+        <ImageView
+            android:id="@+id/emojiBtn"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:padding="8dp"
+            android:src="@android:drawable/ic_menu_emoticons"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Смайлы" />
 
         <EditText
             android:id="@+id/messageInput"
@@ -84,14 +112,15 @@
             android:layout_height="46dp"
             android:layout_weight="1"
             android:background="#0E1621"
-            android:paddingHorizontal="18dp"
+            android:paddingHorizontal="14dp"
             android:textColor="#FFFFFF"
             android:textColorHint="#7F91A4"
             android:textSize="16sp"
             android:hint="Сообщение..."
             android:inputType="textMultiLine|textCapSentences"
             android:maxLines="4"
-            android:layout_marginEnd="8dp" />
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp" />
 
         <ImageView
             android:id="@+id/sendBtn"

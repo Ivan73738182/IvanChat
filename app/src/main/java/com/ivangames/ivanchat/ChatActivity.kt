@@ -1,8 +1,11 @@
 package com.ivangames.ivanchat
 
 import android.os.Bundle
+import android.view.Gravity
+import android.view.View
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -22,6 +25,9 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var messageInput: EditText
     private lateinit var sendBtn: ImageView
     private lateinit var backBtn: ImageView
+    private lateinit var emojiBtn: ImageView
+    private lateinit var emojiPanel: View
+    private lateinit var emojiRow: LinearLayout
     private lateinit var titleText: TextView
     private lateinit var avatarText: TextView
     private lateinit var subText: TextView
@@ -40,6 +46,22 @@ class ChatActivity : AppCompatActivity() {
     private var myId: String = ""
     private var myNick: String = ""
     private var myKey: String = ""
+
+    private var emojiVisible = false
+
+    // Массив популярных эмодзи
+    private val emojis = listOf(
+        "😀", "😁", "😂", "🤣", "😃", "😄", "😅", "😊", "😉", "😍",
+        "😘", "😗", "😙", "😚", "😋", "😜", "😝", "😛", "🤑", "🤗",
+        "🤔", "🤐", "🤨", "😐", "😑", "😶", "😏", "😒", "🙄", "😬",
+        "😌", "😔", "😪", "🤤", "😴", "😷", "🤒", "🤕", "🤢", "🤮",
+        "🥵", "🥶", "😵", "🤯", "🤠", "🥳", "😎", "🤓", "🧐", "😕",
+        "😟", "🙁", "😮", "😯", "😲", "😳", "🥺", "😦", "😧", "😨",
+        "😰", "😥", "😢", "😭", "😱", "😖", "😣", "😞", "😓", "😩",
+        "😫", "🥱", "😤", "😡", "😠", "🤬", "👍", "👎", "👏", "🙏",
+        "🤝", "💪", "🔥", "❤️", "💔", "💯", "✨", "🎉", "🎊", "🥰",
+        "😇", "🤩", "🤪", "🤭", "🤫", "🤥", "😈", "👻", "💀", "🤖"
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,6 +87,9 @@ class ChatActivity : AppCompatActivity() {
         messageInput = findViewById(R.id.messageInput)
         sendBtn = findViewById(R.id.sendBtn)
         backBtn = findViewById(R.id.backBtn)
+        emojiBtn = findViewById(R.id.emojiBtn)
+        emojiPanel = findViewById(R.id.emojiPanel)
+        emojiRow = findViewById(R.id.emojiRow)
         titleText = findViewById(R.id.chatTitleText)
         avatarText = findViewById(R.id.chatAvatarText)
         subText = findViewById(R.id.chatSubText)
@@ -82,7 +107,34 @@ class ChatActivity : AppCompatActivity() {
         sendBtn.setOnClickListener { sendMessage() }
         backBtn.setOnClickListener { finish() }
 
+        // ==== СМАЙЛИКИ ====
+        buildEmojiPanel()
+        emojiBtn.setOnClickListener {
+            emojiVisible = !emojiVisible
+            emojiPanel.visibility = if (emojiVisible) View.VISIBLE else View.GONE
+        }
+
         listenPartnerStatus()
+    }
+
+    private fun buildEmojiPanel() {
+        val size = (44 * resources.displayMetrics.density).toInt()
+        for (emoji in emojis) {
+            val tv = TextView(this)
+            tv.text = emoji
+            tv.textSize = 26f
+            tv.gravity = Gravity.CENTER
+            val lp = LinearLayout.LayoutParams(size, size)
+            lp.marginStart = 4
+            lp.marginEnd = 4
+            tv.layoutParams = lp
+            tv.setOnClickListener {
+                val cur = messageInput.text.toString()
+                messageInput.setText(cur + emoji)
+                messageInput.setSelection(messageInput.text.length)
+            }
+            emojiRow.addView(tv)
+        }
     }
 
     override fun onStart() {
@@ -146,7 +198,6 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
-    // ==== СООБЩЕНИЯ ====
     private fun getMessagesRef() =
         db.collection("chats").document(chatId).collection("messages")
 
