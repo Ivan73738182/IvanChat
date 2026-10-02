@@ -48,6 +48,8 @@ class ChatActivity : AppCompatActivity() {
     private var myKey: String = ""
 
     private var emojiVisible = false
+    private var lastMessageCount = 0
+    private var isFirstLoad = true
 
     private val emojis = listOf(
         "😀", "😁", "😂", "🤣", "😃", "😄", "😅", "😊", "😉", "😍",
@@ -97,7 +99,11 @@ class ChatActivity : AppCompatActivity() {
         avatarText.text = partnerAvatar
         subText.text = "..."
 
-        adapter = MessageAdapter()
+        adapter = MessageAdapter(
+            chatId = chatId,
+            myId = myId,
+            onChanged = { /* Firestore сам обновит */ }
+        )
         val layoutManager = LinearLayoutManager(this)
         layoutManager.stackFromEnd = true
         messagesList.layoutManager = layoutManager
@@ -235,6 +241,16 @@ class ChatActivity : AppCompatActivity() {
                     }
                 }
 
+                // Звук при новом сообщении от собеседника
+                if (!isFirstLoad && messages.size > lastMessageCount) {
+                    val lastMsg = messages.lastOrNull()
+                    if (lastMsg != null && !lastMsg.isMine) {
+                        SoundHelper.playReceive(this)
+                    }
+                }
+                isFirstLoad = false
+                lastMessageCount = messages.size
+
                 adapter.setMessages(messages)
                 if (messages.isNotEmpty()) {
                     messagesList.scrollToPosition(messages.size - 1)
@@ -264,6 +280,7 @@ class ChatActivity : AppCompatActivity() {
 
         getMessagesRef().add(data)
             .addOnSuccessListener {
+                SoundHelper.playSend(this)
                 db.collection("chats").document(chatId)
                     .update(
                         "lastMessage_$myId", text,
