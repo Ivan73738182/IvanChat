@@ -1,26 +1,37 @@
 package com.ivangames.ivanchat
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.PopupMenu
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import java.util.concurrent.atomic.AtomicBoolean
 
 class ChatsActivity : AppCompatActivity() {
 
     private lateinit var chatsList: RecyclerView
     private lateinit var myAvatar: TextView
     private lateinit var headerText: TextView
+    private lateinit var menuBtn: ImageView
     private lateinit var emptyText: TextView
-    private lateinit var menuBtn: android.widget.ImageView
+
     private lateinit var adapter: ChatAdapter
     private lateinit var db: FirebaseFirestore
     private lateinit var auth: FirebaseAuth
@@ -35,6 +46,12 @@ class ChatsActivity : AppCompatActivity() {
 
     private val groupUsers = mutableMapOf<String, User>()
     private val chats = mutableMapOf<String, Chat>()
+
+    // Для фоновой проверки
+    private val handler = Handler(Looper.getMainLooper())
+    private var polling = false
+    private val lastSeenTimestamps = mutableMapOf<String, Long>()
+    private val isFirstCheck = AtomicBoolean(true)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -74,6 +91,27 @@ class ChatsActivity : AppCompatActivity() {
         chatsList.adapter = adapter
 
         menuBtn.setOnClickListener { showMenu() }
+
+        // Создаём канал уведомлений
+        NotificationHelper.createChannel(this)
+
+        // Запрашиваем разрешение на уведомления (Android 13+)
+        requestNotificationPermission()
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    this, Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    1001
+                )
+            }
+        }
     }
 
     override fun onStart() {
@@ -81,6 +119,7 @@ class ChatsActivity : AppCompatActivity() {
         setOnline(true)
         listenGroupUsers()
         listenChats()
+        startPolling()
     }
 
     override fun onStop() {
@@ -90,6 +129,7 @@ class ChatsActivity : AppCompatActivity() {
         chatsListener?.remove()
         chatsListener = null
         setOnline(false)
+        stopPolling()
     }
 
     override fun onDestroy() {
@@ -98,6 +138,7 @@ class ChatsActivity : AppCompatActivity() {
         usersListener = null
         chatsListener?.remove()
         chatsListener = null
+        stopPolling()
     }
 
     private fun goToLogin() {
@@ -114,7 +155,92 @@ class ChatsActivity : AppCompatActivity() {
             )
     }
 
-    // ==== ЗАГРУЖАЕМ ВСЕХ ИЗ ГРУППЫ + ГРУППИРУЕМ ДУБЛИ ====
+    // ==== ФОНОВАЯ ПРОВЕРКА НОВЫХ СООБЩЕНИЙ ====
+    private fun startPolling() {
+        if (polling) return
+        polling = true
+        handler.post(pollRunnable)
+    }
+
+    private fun stopPolling() {
+        polling = false
+        handler.removeCallbacks(pollRunnable)
+    }
+
+    private val pollRunnable = object : Runnable {
+        override fun run() {
+            if (!polling) return
+            checkNewMessages()
+            handler.postDelayed(this, 10000L)  // каждые 10 секунд
+        }
+    }
+
+    private fun checkNewMessages() {
+        if (myId.isEmpty()) return
+
+        // Проверяем все мои чаты на новые сообщения (только чужие)
+        db.collection("chats")
+            .whereArrayContains("members", myId)
+            .get()
+            .addOnSuccessListener { chatsSnap ->
+                for (chatDoc in chatsSnap.documents) {
+                    val chatId = chatDoc.id
+                    val members = chatDoc.get("members") as? List<*> ?: continue
+                    val partnerId = members.firstOrNull { it != myId } as? String ?: continue
+                    val partnerNick = chatDoc.getString("partnerNick_$myId") ?: "Друг"
+
+                    // Смотрим последние сообщения этого чата
+                    db.collection("chats").document(chatId).collection("messages")
+                        .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                        .limit(1)
+                        .get()
+                        .addOnSuccessListener { msgsSnap ->
+                            if (msgsSnap.isEmpty) return@addOnSuccessListener
+                            val doc = msgsSnap.documents[0]
+                            val senderId = doc.getString("senderId") ?: return@addOnSuccessListener
+                            val timestamp = doc.getLong("timestamp") ?: 0L
+
+                            // Пропускаем свои сообщения
+                            if (senderId == myId) return@addOnSuccessListener
+
+                            // Проверяем, новое ли это сообщение
+                            val lastSeen = lastSeenTimestamps[chatId] ?: 0L
+                            if (isFirstCheck.get()) {
+                                // Первая проверка — запоминаем, не уведомляем
+                                lastSeenTimestamps[chatId] = timestamp
+                                return@addOnSuccessListener
+                            }
+
+                            if (timestamp > lastSeen && lastSeen > 0L) {
+                                // Новое сообщение!
+                                lastSeenTimestamps[chatId] = timestamp
+
+                                // Расшифровываем
+                                val encText = doc.getString("encryptedText") ?: ""
+                                val decrypted = Crypto.decrypt(encText, myKey())
+                                val preview = if (decrypted.isEmpty()) "🔒 Сообщение" else decrypted
+
+                                NotificationHelper.showMessageNotification(
+                                    ctx = this@ChatsActivity,
+                                    chatId = chatId,
+                                    chatTitle = partnerNick,
+                                    senderNick = partnerNick,
+                                    messageText = preview,
+                                    notificationId = chatId.hashCode()
+                                )
+                            } else {
+                                // Обновляем таймстемп
+                                lastSeenTimestamps[chatId] = timestamp
+                            }
+                        }
+                }
+                isFirstCheck.set(false)
+            }
+    }
+
+    private fun myKey(): String = Prefs.getGroupCode(this)
+
+    // ==== ГРУППИРОВКА ПОЛЬЗОВАТЕЛЕЙ ====
     private fun listenGroupUsers() {
         usersListener = db.collection("users")
             .whereEqualTo("groupCode", myCode)
@@ -122,7 +248,6 @@ class ChatsActivity : AppCompatActivity() {
                 if (error != null) return@addSnapshotListener
                 if (snapshot == null) return@addSnapshotListener
 
-                // Собираем ВСЕХ
                 val tempList = mutableListOf<Pair<User, Long>>()
 
                 for (doc in snapshot.documents) {
@@ -132,7 +257,6 @@ class ChatsActivity : AppCompatActivity() {
                     val nick = doc.getString("nickname") ?: "?"
                     val avatar = doc.getString("avatar") ?: "👤"
 
-                    // Свои старые аккаунты скрываем
                     if (nick == myNick && avatar == myAvatarStr) continue
 
                     val online = doc.getBoolean("online") ?: false
@@ -142,7 +266,6 @@ class ChatsActivity : AppCompatActivity() {
                     tempList.add(User(uid, nick, avatar, online, lastSeen) to createdAt)
                 }
 
-                // ГРУППИРУЕМ по нику + аватару, оставляем самого свежего
                 val grouped = mutableMapOf<String, Pair<User, Long>>()
                 for (item in tempList) {
                     val key = "${item.first.nickname}|${item.first.avatar}"
@@ -298,6 +421,7 @@ class ChatsActivity : AppCompatActivity() {
                 setOnline(false)
                 usersListener?.remove()
                 chatsListener?.remove()
+                stopPolling()
                 auth.signOut()
                 Prefs.clear(this)
                 goToLogin()
