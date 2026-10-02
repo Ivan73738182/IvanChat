@@ -34,9 +34,7 @@ class ChatsActivity : AppCompatActivity() {
     private var myAvatarStr: String = "😎"
     private var myCode: String = ""
 
-    // Все пользователи группы (кроме меня)
     private val groupUsers = mutableMapOf<String, User>()
-    // Чаты: partnerId -> Chat
     private val chats = mutableMapOf<String, Chat>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -117,6 +115,7 @@ class ChatsActivity : AppCompatActivity() {
             )
     }
 
+    // ==== ЗАГРУЖАЕМ ВСЕХ ИЗ ГРУППЫ + ГРУППИРУЕМ ДУБЛИ ====
     private fun listenGroupUsers() {
         usersListener = db.collection("users")
             .whereEqualTo("groupCode", myCode)
@@ -124,21 +123,39 @@ class ChatsActivity : AppCompatActivity() {
                 if (error != null) return@addSnapshotListener
                 if (snapshot == null) return@addSnapshotListener
 
-                groupUsers.clear()
+                // Собираем ВСЕХ
+                val tempList = mutableListOf<Pair<User, Long>>()
+
                 for (doc in snapshot.documents) {
                     val uid = doc.id
-                    if (uid == myId) continue // себя по ID скрываем
+                    if (uid == myId) continue
 
                     val nick = doc.getString("nickname") ?: "?"
                     val avatar = doc.getString("avatar") ?: "👤"
 
-                    // ФИЛЬТР: скрываем свои старые аккаунты (по нику + аватару)
+                    // Свои старые аккаунты скрываем
                     if (nick == myNick && avatar == myAvatarStr) continue
 
                     val online = doc.getBoolean("online") ?: false
                     val lastSeen = doc.getLong("lastSeen") ?: 0L
+                    val createdAt = doc.getLong("createdAt") ?: 0L
 
-                    groupUsers[uid] = User(uid, nick, avatar, online, lastSeen)
+                    tempList.add(User(uid, nick, avatar, online, lastSeen) to createdAt)
+                }
+
+                // ГРУППИРУЕМ по нику + аватару, оставляем самого свежего
+                val grouped = mutableMapOf<String, Pair<User, Long>>()
+                for (item in tempList) {
+                    val key = "${item.first.nickname}|${item.first.avatar}"
+                    val existing = grouped[key]
+                    if (existing == null || item.second > existing.second) {
+                        grouped[key] = item
+                    }
+                }
+
+                groupUsers.clear()
+                for ((_, item) in grouped) {
+                    groupUsers[item.first.uid] = item.first
                 }
 
                 rebuildChatList()
@@ -246,17 +263,14 @@ class ChatsActivity : AppCompatActivity() {
             }
     }
 
-    // ==== МЕНЮ ====
     private fun showMenu() {
         val popup = PopupMenu(this, menuBtn)
         popup.menu.add("🔄 Сменить группу")
-        popup.menu.add("🗑 Очистить мои сообщения (локально)")
         popup.menu.add("🚪 Выйти из аккаунта")
 
         popup.setOnMenuItemClickListener { item ->
             when (item.title.toString()) {
                 "🔄 Сменить группу" -> showChangeGroupDialog()
-                "🗑 Очистить мои сообщения (локально)" -> clearLocalHistory()
                 "🚪 Выйти из аккаунта" -> showLogoutDialog()
             }
             true
@@ -272,17 +286,6 @@ class ChatsActivity : AppCompatActivity() {
                 setOnline(false)
                 Prefs.setGroupCode(this, "")
                 goToLogin()
-            }
-            .setNegativeButton("Отмена", null)
-            .show()
-    }
-
-    private fun clearLocalHistory() {
-        AlertDialog.Builder(this)
-            .setTitle("Очистить историю?")
-            .setMessage("Локальная история сообщений будет удалена. На сервере — останется.")
-            .setPositiveButton("Очистить") { _, _ ->
-                // Здесь можно почистить локальный кэш (если добавим)
             }
             .setNegativeButton("Отмена", null)
             .show()
