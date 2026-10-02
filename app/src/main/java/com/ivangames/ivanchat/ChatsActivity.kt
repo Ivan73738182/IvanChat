@@ -19,9 +19,8 @@ class ChatsActivity : AppCompatActivity() {
     private lateinit var chatsList: RecyclerView
     private lateinit var myAvatar: TextView
     private lateinit var headerText: TextView
-    private lateinit var menuBtn: Button
     private lateinit var emptyText: TextView
-
+    private lateinit var menuBtn: android.widget.ImageView
     private lateinit var adapter: ChatAdapter
     private lateinit var db: FirebaseFirestore
     private lateinit var auth: FirebaseAuth

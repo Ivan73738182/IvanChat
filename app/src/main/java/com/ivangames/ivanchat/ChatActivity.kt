@@ -1,8 +1,8 @@
 package com.ivangames.ivanchat
 
 import android.os.Bundle
-import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -16,10 +16,11 @@ class ChatActivity : AppCompatActivity() {
 
     private lateinit var messagesList: RecyclerView
     private lateinit var messageInput: EditText
-    private lateinit var sendBtn: Button
-    private lateinit var backBtn: Button
+    private lateinit var sendBtn: ImageView
+    private lateinit var backBtn: ImageView
     private lateinit var titleText: TextView
     private lateinit var avatarText: TextView
+    private lateinit var subText: TextView
 
     private lateinit var adapter: MessageAdapter
     private lateinit var db: FirebaseFirestore
@@ -43,7 +44,7 @@ class ChatActivity : AppCompatActivity() {
 
         myId = Prefs.getUserId(this)
         myNick = Prefs.getNickname(this)
-        myKey = Prefs.getGroupCode(this)  // ← ключ шифрования = код группы
+        myKey = Prefs.getGroupCode(this)  // ключ шифрования = код группы
 
         chatId = intent.getStringExtra("chatId") ?: ""
         chatTitle = intent.getStringExtra("title") ?: "Чат"
@@ -59,13 +60,13 @@ class ChatActivity : AppCompatActivity() {
         messageInput = findViewById(R.id.messageInput)
         sendBtn = findViewById(R.id.sendBtn)
         backBtn = findViewById(R.id.backBtn)
-titleText = findViewById(R.id.chatTitleText)
-avatarText = findViewById(R.id.chatAvatarText)
-val subText = findViewById<TextView>(R.id.chatSubText)
+        titleText = findViewById(R.id.chatTitleText)
+        avatarText = findViewById(R.id.chatAvatarText)
+        subText = findViewById(R.id.chatSubText)
 
-titleText.text = chatTitle
-avatarText.text = partnerAvatar
-subText.text = "был(а) недавно"
+        titleText.text = chatTitle
+        avatarText.text = partnerAvatar
+        subText.text = "был(а) недавно"
 
         adapter = MessageAdapter()
         val layoutManager = LinearLayoutManager(this)
@@ -123,7 +124,7 @@ subText.text = "был(а) недавно"
                         msg.isMine = (senderId == myId)
                         messages.add(msg)
                     } catch (e: Exception) {
-                        // skip битые
+                        // skip
                     }
                 }
 
@@ -155,7 +156,7 @@ subText.text = "был(а) недавно"
 
         getMessagesRef().add(data)
             .addOnSuccessListener {
-                // Обновляем lastMessage в чате для обоих
+                // Обновляем последнее сообщение в чате для обоих
                 db.collection("chats").document(chatId)
                     .update(
                         "lastMessage_$myId", text,

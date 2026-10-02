@@ -12,25 +12,25 @@
         android:orientation="horizontal"
         android:background="#17212B"
         android:gravity="center_vertical"
-        android:paddingHorizontal="8dp">
+        android:paddingHorizontal="4dp">
 
-        <Button
+        <ImageView
             android:id="@+id/backBtn"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:text="←"
-            android:textSize="22sp"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="#00000000"
-            android:minWidth="0dp"
-            android:padding="0dp" />
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:padding="10dp"
+            android:src="@android:drawable/ic_menu_revert"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Назад" />
 
         <TextView
             android:id="@+id/chatAvatarText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
             android:text="💬"
             android:textSize="26sp"
+            android:gravity="center"
+            android:layout_marginStart="4dp"
             android:layout_marginEnd="10dp" />
 
         <LinearLayout
@@ -52,7 +52,7 @@
                 android:id="@+id/chatSubText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text=""
+                android:text="был(а) недавно"
                 android:textColor="#7F91A4"
                 android:textSize="13sp" />
 
@@ -81,7 +81,7 @@
         <EditText
             android:id="@+id/messageInput"
             android:layout_width="0dp"
-            android:layout_height="48dp"
+            android:layout_height="46dp"
             android:layout_weight="1"
             android:background="#0E1621"
             android:paddingHorizontal="18dp"
@@ -93,16 +93,14 @@
             android:maxLines="4"
             android:layout_marginEnd="8dp" />
 
-        <Button
+        <ImageView
             android:id="@+id/sendBtn"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:text="➤"
-            android:textSize="20sp"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="#5288C1"
-            android:minWidth="0dp"
-            android:padding="0dp" />
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:padding="10dp"
+            android:src="@android:drawable/ic_menu_send"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Отправить" />
 
     </LinearLayout>
 
