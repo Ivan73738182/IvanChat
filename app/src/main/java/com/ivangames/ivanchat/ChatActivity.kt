@@ -59,11 +59,13 @@ class ChatActivity : AppCompatActivity() {
         messageInput = findViewById(R.id.messageInput)
         sendBtn = findViewById(R.id.sendBtn)
         backBtn = findViewById(R.id.backBtn)
-        titleText = findViewById(R.id.chatTitleText)
-        avatarText = findViewById(R.id.chatAvatarText)
+titleText = findViewById(R.id.chatTitleText)
+avatarText = findViewById(R.id.chatAvatarText)
+val subText = findViewById<TextView>(R.id.chatSubText)
 
-        titleText.text = chatTitle
-        avatarText.text = partnerAvatar
+titleText.text = chatTitle
+avatarText.text = partnerAvatar
+subText.text = "был(а) недавно"
 
         adapter = MessageAdapter()
         val layoutManager = LinearLayoutManager(this)

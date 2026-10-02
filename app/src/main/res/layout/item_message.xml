@@ -3,36 +3,66 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:paddingHorizontal="12dp"
-    android:paddingVertical="4dp">
+    android:paddingHorizontal="8dp"
+    android:paddingVertical="2dp">
 
+    <!-- Имя отправителя (для чужих) -->
     <TextView
         android:id="@+id/senderText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="#80E0A0"
+        android:textColor="#5EB5F7"
         android:textSize="13sp"
         android:textStyle="bold"
-        android:paddingHorizontal="8dp"
+        android:paddingHorizontal="14dp"
+        android:paddingTop="6dp"
         android:layout_marginBottom="2dp" />
 
-    <TextView
-        android:id="@+id/messageText"
+    <!-- Пузырь сообщения -->
+    <FrameLayout
+        android:id="@+id/bubbleContainer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:paddingHorizontal="14dp"
-        android:paddingVertical="10dp"
-        android:textColor="#FFFFFF"
-        android:textSize="17sp"
-        android:maxWidth="280dp" />
+        android:maxWidth="300dp">
 
-    <TextView
-        android:id="@+id/timeText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="#808090"
-        android:textSize="11sp"
-        android:paddingHorizontal="8dp"
-        android:layout_marginTop="2dp" />
+        <TextView
+            android:id="@+id/messageText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="14dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="22dp"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:lineSpacingExtra="2dp" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:orientation="horizontal"
+            android:paddingEnd="10dp"
+            android:paddingBottom="5dp"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/timeText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#7DA8C7"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/checkText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="✓✓"
+                android:textColor="#7DA8C7"
+                android:textSize="11sp"
+                android:layout_marginStart="3dp" />
+
+        </LinearLayout>
+
+    </FrameLayout>
 
 </LinearLayout>
