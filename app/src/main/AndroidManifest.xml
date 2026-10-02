@@ -18,11 +18,6 @@
             android:windowSoftInputMode="adjustResize" />
 
         <activity
-            android:name=".UsersActivity"
-            android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
-
-        <activity
             android:name=".ChatActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />

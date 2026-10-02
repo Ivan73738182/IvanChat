@@ -6,7 +6,7 @@ object Prefs {
 
     private const val NAME = "ivanchat_prefs"
     private const val KEY_NICKNAME = "nickname"
-    private const val KEY_CHAT_KEY = "chat_key"
+    private const val KEY_GROUP_CODE = "group_code"
     private const val KEY_USER_ID = "user_id"
     private const val KEY_AVATAR = "avatar"
 
@@ -20,14 +20,14 @@ object Prefs {
             .getString(KEY_NICKNAME, "") ?: ""
     }
 
-    fun setChatKey(ctx: Context, value: String) {
+    fun setGroupCode(ctx: Context, value: String) {
         ctx.getSharedPreferences(NAME, Context.MODE_PRIVATE)
-            .edit().putString(KEY_CHAT_KEY, value).apply()
+            .edit().putString(KEY_GROUP_CODE, value).apply()
     }
 
-    fun getChatKey(ctx: Context): String {
+    fun getGroupCode(ctx: Context): String {
         return ctx.getSharedPreferences(NAME, Context.MODE_PRIVATE)
-            .getString(KEY_CHAT_KEY, "") ?: ""
+            .getString(KEY_GROUP_CODE, "") ?: ""
     }
 
     fun setUserId(ctx: Context, value: String) {
@@ -48,5 +48,11 @@ object Prefs {
     fun getAvatar(ctx: Context): String {
         return ctx.getSharedPreferences(NAME, Context.MODE_PRIVATE)
             .getString(KEY_AVATAR, "😎") ?: "😎"
+    }
+
+    // Очистить всё (при смене пользователя)
+    fun clear(ctx: Context) {
+        ctx.getSharedPreferences(NAME, Context.MODE_PRIVATE)
+            .edit().clear().apply()
     }
 }

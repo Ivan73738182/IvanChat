@@ -2,6 +2,7 @@ package com.ivangames.ivanchat
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
@@ -18,7 +19,6 @@ class ChatsActivity : AppCompatActivity() {
     private lateinit var chatsList: RecyclerView
     private lateinit var myAvatar: TextView
     private lateinit var headerText: TextView
-    private lateinit var newChatBtn: Button
     private lateinit var logoutBtn: Button
     private lateinit var emptyText: TextView
 
@@ -26,11 +26,18 @@ class ChatsActivity : AppCompatActivity() {
     private lateinit var db: FirebaseFirestore
     private lateinit var auth: FirebaseAuth
 
-    private var listener: ListenerRegistration? = null
+    private var usersListener: ListenerRegistration? = null
+    private var chatsListener: ListenerRegistration? = null
 
     private var myId: String = ""
     private var myNick: String = ""
     private var myAvatarStr: String = "😎"
+    private var myCode: String = ""
+
+    // Все пользователи группы (кроме меня)
+    private val groupUsers = mutableMapOf<String, User>()
+    // Чаты: partnerId -> Chat
+    private val chats = mutableMapOf<String, Chat>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,8 +55,9 @@ class ChatsActivity : AppCompatActivity() {
         myId = Prefs.getUserId(this)
         myNick = Prefs.getNickname(this)
         myAvatarStr = Prefs.getAvatar(this)
+        myCode = Prefs.getGroupCode(this)
 
-        if (myId.isEmpty()) {
+        if (myId.isEmpty() || myCode.isEmpty()) {
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
             return
@@ -58,7 +66,6 @@ class ChatsActivity : AppCompatActivity() {
         chatsList = findViewById(R.id.chatsList)
         myAvatar = findViewById(R.id.myAvatar)
         headerText = findViewById(R.id.headerText)
-        newChatBtn = findViewById(R.id.newChatBtn)
         logoutBtn = findViewById(R.id.logoutBtn)
         emptyText = findViewById(R.id.emptyText)
 
@@ -71,10 +78,6 @@ class ChatsActivity : AppCompatActivity() {
         chatsList.layoutManager = LinearLayoutManager(this)
         chatsList.adapter = adapter
 
-        newChatBtn.setOnClickListener {
-            startActivity(Intent(this, UsersActivity::class.java))
-        }
-
         logoutBtn.setOnClickListener {
             showLogoutDialog()
         }
@@ -82,21 +85,26 @@ class ChatsActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        loadChats()
         setOnline(true)
+        listenGroupUsers()
+        listenChats()
     }
 
     override fun onStop() {
         super.onStop()
-        listener?.remove()
-        listener = null
+        usersListener?.remove()
+        usersListener = null
+        chatsListener?.remove()
+        chatsListener = null
         setOnline(false)
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        listener?.remove()
-        listener = null
+        usersListener?.remove()
+        usersListener = null
+        chatsListener?.remove()
+        chatsListener = null
     }
 
     private fun setOnline(online: Boolean) {
@@ -108,76 +116,148 @@ class ChatsActivity : AppCompatActivity() {
             )
     }
 
-    private fun loadChats() {
-        listener?.remove()
-
-        listener = db.collection("chats")
-            .whereArrayContains("members", myId)
+    // ==== СЛУШАЕМ ВСЕХ ПОЛЬЗОВАТЕЛЕЙ ГРУППЫ ====
+    private fun listenGroupUsers() {
+        usersListener = db.collection("users")
+            .whereEqualTo("groupCode", myCode)
             .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    Toast.makeText(this, "Ошибка: ${error.message}", Toast.LENGTH_SHORT).show()
-                    return@addSnapshotListener
-                }
+                if (error != null) return@addSnapshotListener
                 if (snapshot == null) return@addSnapshotListener
 
-                val chatList = mutableListOf<Chat>()
-
+                groupUsers.clear()
                 for (doc in snapshot.documents) {
-                    try {
-                        val chatId = doc.id
-                        val members = doc.get("members") as? List<*> ?: continue
-                        if (members.size != 2) continue
+                    val uid = doc.id
+                    if (uid == myId) continue // себя не показываем
 
-                        val partnerId = members.firstOrNull { it != myId } as? String ?: continue
-                        val partnerNick = doc.getString("partnerNick_$myId") ?: "Друг"
-                        val partnerAvatar = doc.getString("avatar_$partnerId") ?: "👤"
-                        val lastMessage = doc.getString("lastMessage_$myId") ?: ""
-                        val lastTime = doc.getLong("lastTime") ?: 0L
+                    val nick = doc.getString("nickname") ?: "?"
+                    val avatar = doc.getString("avatar") ?: "👤"
+                    val online = doc.getBoolean("online") ?: false
+                    val lastSeen = doc.getLong("lastSeen") ?: 0L
 
-                        chatList.add(
-                            Chat(
-                                id = chatId,
-                                isGroup = false,
-                                title = partnerNick,
-                                partnerNick = partnerNick,
-                                partnerAvatar = partnerAvatar,
-                                partnerId = partnerId,
-                                lastMessage = lastMessage,
-                                lastTime = lastTime
-                            )
-                        )
-                    } catch (e: Exception) {
-                        // пропускаем
-                    }
+                    groupUsers[uid] = User(uid, nick, avatar, online, lastSeen)
                 }
 
-                // Сортируем по времени последнего сообщения
-                val sorted = chatList.sortedByDescending { it.lastTime }
-                adapter.setChats(sorted)
-
-                // Пустое состояние
-                emptyText.visibility = if (sorted.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
-                chatsList.visibility = if (sorted.isEmpty()) android.view.View.GONE else android.view.View.VISIBLE
+                rebuildChatList()
             }
     }
 
+    // ==== СЛУШАЕМ МОИ ЧАТЫ (для lastMessage) ====
+    private fun listenChats() {
+        chatsListener = db.collection("chats")
+            .whereArrayContains("members", myId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                if (snapshot == null) return@addSnapshotListener
+
+                chats.clear()
+                for (doc in snapshot.documents) {
+                    val chatId = doc.id
+                    val members = doc.get("members") as? List<*> ?: continue
+                    if (members.size != 2) continue
+
+                    val partnerId = members.firstOrNull { it != myId } as? String ?: continue
+                    val partnerNick = doc.getString("partnerNick_$myId") ?: ""
+                    val partnerAvatar = doc.getString("avatar_$partnerId") ?: "👤"
+                    val lastMessage = doc.getString("lastMessage_$myId") ?: ""
+                    val lastTime = doc.getLong("lastTime") ?: 0L
+
+                    chats[partnerId] = Chat(
+                        id = chatId,
+                        isGroup = false,
+                        title = partnerNick,
+                        partnerNick = partnerNick,
+                        partnerAvatar = partnerAvatar,
+                        partnerId = partnerId,
+                        lastMessage = lastMessage,
+                        lastTime = lastTime
+                    )
+                }
+
+                rebuildChatList()
+            }
+    }
+
+    // ==== СОБИРАЕМ СПИСОК: все из группы + их чаты ====
+    private fun rebuildChatList() {
+        val chatList = mutableListOf<Chat>()
+
+        for ((partnerId, user) in groupUsers) {
+            val existing = chats[partnerId]
+            val chatId = makeChatId(myId, partnerId)
+
+            chatList.add(
+                Chat(
+                    id = existing?.id ?: chatId,
+                    isGroup = false,
+                    title = user.nickname,
+                    partnerNick = user.nickname,
+                    partnerAvatar = user.avatar,
+                    partnerId = partnerId,
+                    lastMessage = existing?.lastMessage ?: "",
+                    lastTime = existing?.lastTime ?: 0L
+                )
+            )
+        }
+
+        // Сортировка: сначала те, с кем последнее сообщение свежее, потом по алфавиту
+        val sorted = chatList.sortedWith(
+            compareByDescending<Chat> { it.lastTime }.thenBy { it.title }
+        )
+
+        adapter.setChats(sorted)
+
+        emptyText.visibility = if (sorted.isEmpty()) View.VISIBLE else View.GONE
+        chatsList.visibility = if (sorted.isEmpty()) View.GONE else View.VISIBLE
+    }
+
+    // Уникальный chatId для пары
+    private fun makeChatId(id1: String, id2: String): String {
+        val sorted = listOf(id1, id2).sorted()
+        return "chat_${sorted[0]}_${sorted[1]}"
+    }
+
     private fun openChat(chat: Chat) {
-        val intent = Intent(this, ChatActivity::class.java)
-        intent.putExtra("chatId", chat.id)
-        intent.putExtra("title", chat.title)
-        intent.putExtra("partnerId", chat.partnerId)
-        intent.putExtra("isGroup", false)
-        intent.putExtra("partnerAvatar", chat.partnerAvatar)
-        startActivity(intent)
+        // Создаём документ чата, если ещё нет
+        val ids = listOf(myId, chat.partnerId).sorted()
+        val chatId = "chat_${ids[0]}_${ids[1]}"
+
+        val myAvatar = Prefs.getAvatar(this)
+
+        db.collection("chats").document(chatId).get()
+            .addOnSuccessListener { doc ->
+                if (!doc.exists()) {
+                    val data = hashMapOf(
+                        "members" to listOf(myId, chat.partnerId),
+                        "createdAt" to System.currentTimeMillis(),
+                        "lastTime" to System.currentTimeMillis(),
+                        "partnerNick_${chat.partnerId}" to myNick,
+                        "avatar_$myId" to myAvatar,
+                        "partnerNick_$myId" to chat.partnerNick,
+                        "avatar_${chat.partnerId}" to chat.partnerAvatar
+                    )
+                    db.collection("chats").document(chatId).set(data)
+                }
+
+                val intent = Intent(this, ChatActivity::class.java)
+                intent.putExtra("chatId", chatId)
+                intent.putExtra("title", chat.partnerNick)
+                intent.putExtra("partnerId", chat.partnerId)
+                intent.putExtra("partnerAvatar", chat.partnerAvatar)
+                startActivity(intent)
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(this, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
     }
 
     private fun showLogoutDialog() {
         AlertDialog.Builder(this)
             .setTitle("Выйти из чата?")
-            .setMessage("Придётся вводить ник и ключ заново.")
+            .setMessage("Придётся вводить ник и код заново.")
             .setPositiveButton("Выйти") { _, _ ->
                 setOnline(false)
-                listener?.remove()
+                usersListener?.remove()
+                chatsListener?.remove()
                 auth.signOut()
                 Prefs.setUserId(this, "")
                 startActivity(Intent(this, LoginActivity::class.java))

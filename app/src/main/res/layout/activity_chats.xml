@@ -32,22 +32,11 @@
             android:textStyle="bold" />
 
         <Button
-            android:id="@+id/newChatBtn"
-            android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:text="+"
-            android:textSize="22sp"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="#3CAE6E"
-            android:minWidth="52dp"
-            android:layout_marginEnd="8dp" />
-
-        <Button
             android:id="@+id/logoutBtn"
             android:layout_width="wrap_content"
             android:layout_height="40dp"
             android:text="×"
-            android:textSize="18sp"
+            android:textSize="20sp"
             android:textColor="#FFFFFF"
             android:backgroundTint="#B04040"
             android:minWidth="48dp" />
@@ -70,7 +59,7 @@
             android:id="@+id/emptyText"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:text="Пока нет чатов.\n\nНажми ➕ вверху,\nчтобы начать новый чат."
+            android:text="Пока никого нет в группе.\n\nПозови друзей —\nпусть введут тот же код."
             android:textColor="#707080"
             android:textSize="18sp"
             android:gravity="center"

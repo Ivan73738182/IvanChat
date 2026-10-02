@@ -8,12 +8,13 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 
 class LoginActivity : AppCompatActivity() {
 
     private lateinit var nickInput: EditText
-    private lateinit var keyInput: EditText
+    private lateinit var codeInput: EditText
     private lateinit var enterBtn: Button
     private lateinit var statusText: TextView
     private lateinit var avatarText: TextView
@@ -34,7 +35,12 @@ class LoginActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         auth = FirebaseAuth.getInstance()
-        if (auth.currentUser != null && Prefs.getChatKey(this).isNotEmpty() && Prefs.getNickname(this).isNotEmpty()) {
+
+        // Уже вошли — сразу в список чатов
+        if (auth.currentUser != null
+            && Prefs.getUserId(this).isNotEmpty()
+            && Prefs.getNickname(this).isNotEmpty()
+            && Prefs.getGroupCode(this).isNotEmpty()) {
             startActivity(Intent(this, ChatsActivity::class.java))
             finish()
             return
@@ -44,51 +50,50 @@ class LoginActivity : AppCompatActivity() {
         db = FirebaseFirestore.getInstance()
 
         nickInput = findViewById(R.id.nickInput)
-        keyInput = findViewById(R.id.keyInput)
+        codeInput = findViewById(R.id.codeInput)
         enterBtn = findViewById(R.id.enterBtn)
         statusText = findViewById(R.id.statusText)
         avatarText = findViewById(R.id.avatarText)
         avatarPicker = findViewById(R.id.avatarPicker)
 
         nickInput.setText(Prefs.getNickname(this))
-        keyInput.setText(Prefs.getChatKey(this))
+        codeInput.setText(Prefs.getGroupCode(this))
         selectedAvatar = Prefs.getAvatar(this)
         avatarText.text = selectedAvatar
 
-        // Тап на аватар — открывает выбор
+        // Тап на аватар — меняет эмодзи
         avatarText.setOnClickListener {
-            avatarIndex = (avatars.indexOf(selectedAvatar) + 1) % avatars.size
-            if (avatarIndex < 0) avatarIndex = 0
+            val curIndex = avatars.indexOf(selectedAvatar)
+            avatarIndex = if (curIndex >= 0) (curIndex + 1) % avatars.size else 0
             selectedAvatar = avatars[avatarIndex]
             avatarText.text = selectedAvatar
         }
 
-        // Тап на текст-подсказку — тоже
         avatarPicker.setOnClickListener {
             avatarText.performClick()
         }
 
         enterBtn.setOnClickListener {
             val nick = nickInput.text.toString().trim()
-            val key = keyInput.text.toString().trim()
+            val code = codeInput.text.toString().trim()
 
             if (nick.length < 2) {
                 Toast.makeText(this, "Ник слишком короткий", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            if (key.length < 4) {
-                Toast.makeText(this, "Ключ шифрования — минимум 4 символа", Toast.LENGTH_SHORT).show()
+            if (code.length < 3) {
+                Toast.makeText(this, "Код группы — минимум 3 символа", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
             statusText.text = "Подключение..."
             enterBtn.isEnabled = false
 
-            loginAnonymously(nick, key)
+            loginAnonymously(nick, code)
         }
     }
 
-    private fun loginAnonymously(nick: String, key: String) {
+    private fun loginAnonymously(nick: String, code: String) {
         auth.signInAnonymously()
             .addOnCompleteListener { task ->
                 if (!task.isSuccessful) {
@@ -104,20 +109,25 @@ class LoginActivity : AppCompatActivity() {
                     return@addOnCompleteListener
                 }
 
-                Prefs.setUserId(this, user.uid)
+                val uid = user.uid
+
+                // Сохраняем локально
+                Prefs.setUserId(this, uid)
                 Prefs.setNickname(this, nick)
-                Prefs.setChatKey(this, key)
+                Prefs.setGroupCode(this, code)
                 Prefs.setAvatar(this, selectedAvatar)
 
+                // Сохраняем пользователя в Firestore
                 val userData = hashMapOf(
                     "nickname" to nick,
                     "avatar" to selectedAvatar,
+                    "groupCode" to code,
                     "createdAt" to System.currentTimeMillis(),
                     "online" to true,
                     "lastSeen" to System.currentTimeMillis()
                 )
 
-                db.collection("users").document(user.uid)
+                db.collection("users").document(uid)
                     .set(userData)
                     .addOnCompleteListener { t2 ->
                         if (!t2.isSuccessful) {
@@ -125,9 +135,28 @@ class LoginActivity : AppCompatActivity() {
                             enterBtn.isEnabled = true
                             return@addOnCompleteListener
                         }
-                        statusText.text = "Успешно! Заходим..."
-                        startActivity(Intent(this, ChatsActivity::class.java))
-                        finish()
+
+                        // Добавляем себя в группу
+                        val groupRef = db.collection("groups").document(code)
+                        groupRef.set(
+                            hashMapOf(
+                                "code" to code,
+                                "createdAt" to System.currentTimeMillis()
+                            )
+                        ).addOnCompleteListener {
+                            // Добавляем userId в массив members
+                            groupRef.update("members", FieldValue.arrayUnion(uid))
+                                .addOnCompleteListener { t3 ->
+                                    if (!t3.isSuccessful) {
+                                        statusText.text = "Ошибка группы: ${t3.exception?.message}"
+                                        enterBtn.isEnabled = true
+                                        return@addOnCompleteListener
+                                    }
+                                    statusText.text = "Успешно! Заходим..."
+                                    startActivity(Intent(this, ChatsActivity::class.java))
+                                    finish()
+                                }
+                        }
                     }
             }
     }

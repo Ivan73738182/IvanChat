@@ -43,14 +43,14 @@ class ChatActivity : AppCompatActivity() {
 
         myId = Prefs.getUserId(this)
         myNick = Prefs.getNickname(this)
-        myKey = Prefs.getChatKey(this)
+        myKey = Prefs.getGroupCode(this)  // ← ключ шифрования = код группы
 
         chatId = intent.getStringExtra("chatId") ?: ""
         chatTitle = intent.getStringExtra("title") ?: "Чат"
         partnerId = intent.getStringExtra("partnerId") ?: ""
         partnerAvatar = intent.getStringExtra("partnerAvatar") ?: "👤"
 
-        if (chatId.isEmpty()) {
+        if (chatId.isEmpty() || myId.isEmpty() || myKey.isEmpty()) {
             finish()
             return
         }
@@ -92,7 +92,7 @@ class ChatActivity : AppCompatActivity() {
         listener = null
     }
 
-    private fun getMessagesRef() = 
+    private fun getMessagesRef() =
         db.collection("chats").document(chatId).collection("messages")
 
     private fun listenMessages() {
@@ -121,7 +121,7 @@ class ChatActivity : AppCompatActivity() {
                         msg.isMine = (senderId == myId)
                         messages.add(msg)
                     } catch (e: Exception) {
-                        // skip
+                        // skip битые
                     }
                 }
 
@@ -153,7 +153,7 @@ class ChatActivity : AppCompatActivity() {
 
         getMessagesRef().add(data)
             .addOnSuccessListener {
-                // Обновляем последнее сообщение в чате
+                // Обновляем lastMessage в чате для обоих
                 db.collection("chats").document(chatId)
                     .update(
                         "lastMessage_$myId", text,
