@@ -44,6 +44,7 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
         private val messageText: TextView = itemView.findViewById(R.id.messageText)
         private val timeText: TextView = itemView.findViewById(R.id.timeText)
         private val checkText: TextView = itemView.findViewById(R.id.checkText)
+        private val tailImage: View = itemView.findViewById(R.id.tailImage)
 
         fun bind(message: Message) {
             senderText.text = message.senderNick
@@ -51,41 +52,54 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() 
             timeText.text = timeFormat.format(Date(message.timestamp))
 
             val bg = GradientDrawable()
-            bg.cornerRadius = 36f
 
             if (message.isMine) {
-                // === СВОЁ СООБЩЕНИЕ — синий пузырь ТГ ===
+                // === СВОЁ — синий пузырь справа ===
                 container.gravity = Gravity.END
                 senderText.visibility = View.GONE
                 checkText.visibility = View.VISIBLE
+                tailImage.visibility = View.GONE  // хвостик только у чужих
 
-                // Синий как в Telegram
+                // Все углы скруглены, кроме правого нижнего
+                bg.cornerRadii = floatArrayOf(
+                    36f, 36f,   // top-left
+                    36f, 36f,   // top-right
+                    36f, 36f,   // bottom-right
+                    4f, 4f      // bottom-left (маленький — хвост)
+                )
                 bg.setColor(Color.parseColor("#2B5278"))
 
-                // Хвостик справа (через отступ)
-                messageText.background = bg
-                bubbleContainer.layoutParams = (bubbleContainer.layoutParams as LinearLayout.LayoutParams).apply {
-                    gravity = Gravity.END
+                // Галочки: ✓ или ✓✓
+                if (message.isRead) {
+                    checkText.text = "✓✓"
+                    checkText.setTextColor(Color.parseColor("#7DABE0"))
+                } else {
+                    checkText.text = "✓"
+                    checkText.setTextColor(Color.parseColor("#A7C7E7"))
                 }
 
                 timeText.setTextColor(Color.parseColor("#A7C7E7"))
-                checkText.setTextColor(Color.parseColor("#A7C7E7"))
 
             } else {
-                // === ЧУЖОЕ — серый пузырь ===
+                // === ЧУЖОЕ — серый пузырь слева ===
                 container.gravity = Gravity.START
                 senderText.visibility = View.VISIBLE
                 checkText.visibility = View.GONE
+                tailImage.visibility = View.VISIBLE
 
+                // Все углы скруглены, кроме левого нижнего
+                bg.cornerRadii = floatArrayOf(
+                    36f, 36f,   // top-left
+                    36f, 36f,   // top-right
+                    4f, 4f,     // bottom-right (маленький — хвост)
+                    36f, 36f    // bottom-left
+                )
                 bg.setColor(Color.parseColor("#182533"))
-
-                messageText.background = bg
-                bubbleContainer.layoutParams = (bubbleContainer.layoutParams as LinearLayout.LayoutParams).apply {
-                    gravity = Gravity.START
-                }
 
                 timeText.setTextColor(Color.parseColor("#7F91A4"))
             }
+
+            messageText.background = bg
         }
     }
 }

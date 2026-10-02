@@ -13,6 +13,9 @@ class Message {
     // Для своих/чужих сообщений
     var isMine: Boolean = false
 
+    // Прочитано ли собеседником
+    var isRead: Boolean = false
+
     constructor()
 
     constructor(

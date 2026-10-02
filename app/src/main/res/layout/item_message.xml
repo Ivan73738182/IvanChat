@@ -56,13 +56,20 @@
                 android:id="@+id/checkText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="✓✓"
+                android:text="✓"
                 android:textColor="#7DA8C7"
-                android:textSize="11sp"
+                android:textSize="12sp"
                 android:layout_marginStart="3dp" />
 
         </LinearLayout>
 
     </FrameLayout>
+
+    <!-- Заглушка для tailImage (не используется, но нужна код) -->
+    <View
+        android:id="@+id/tailImage"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
 
 </LinearLayout>

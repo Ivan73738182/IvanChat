@@ -98,43 +98,85 @@ class ChatActivity : AppCompatActivity() {
     private fun getMessagesRef() =
         db.collection("chats").document(chatId).collection("messages")
 
-    private fun listenMessages() {
         listener = getMessagesRef()
-            .orderBy("timestamp", Query.Direction.ASCENDING)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    Toast.makeText(this, "Ошибка: ${error.message}", Toast.LENGTH_SHORT).show()
-                    return@addSnapshotListener
-                }
-                if (snapshot == null) return@addSnapshotListener
+        .orderBy("timestamp", Query.Direction.ASCENDING)
+        .addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                Toast.makeText(this, "Ошибка: ${error.message}", Toast.LENGTH_SHORT).show()
+                return@addSnapshotListener
+            }
+            if (snapshot == null) return@addSnapshotListener
 
-                val messages = mutableListOf<Message>()
-                for (doc in snapshot.documents) {
-                    try {
-                        val id = doc.id
-                        val senderId = doc.getString("senderId") ?: ""
-                        val senderNick = doc.getString("senderNick") ?: "?"
-                        val encText = doc.getString("encryptedText") ?: ""
-                        val timestamp = doc.getLong("timestamp") ?: 0L
+            val messages = mutableListOf<Message>()
+            for (doc in snapshot.documents) {
+                try {
+                    val id = doc.id
+                    val senderId = doc.getString("senderId") ?: ""
+                    val senderNick = doc.getString("senderNick") ?: "?"
+                    val encText = doc.getString("encryptedText") ?: ""
+                    val timestamp = doc.getLong("timestamp") ?: 0L
 
-                        val decrypted = Crypto.decrypt(encText, myKey)
+                    val decrypted = Crypto.decrypt(encText, myKey)
 
-                        val msg = Message(id, senderId, senderNick, encText, timestamp)
-                        msg.decryptedText = if (decrypted.isEmpty()) "[не расшифровано]" else decrypted
-                        msg.isMine = (senderId == myId)
-                        messages.add(msg)
-                    } catch (e: Exception) {
-                        // skip
-                    }
-                }
-
-                adapter.setMessages(messages)
-                if (messages.isNotEmpty()) {
-                    messagesList.scrollToPosition(messages.size - 1)
+                    val msg = Message(id, senderId, senderNick, encText, timestamp)
+                    msg.decryptedText = if (decrypted.isEmpty()) "[не расшифровано]" else decrypted
+                    msg.isMine = (senderId == myId)
+                    messages.add(msg)
+                } catch (e: Exception) {
+                    // skip
                 }
             }
-    }
 
+            adapter.setMessages(messages)
+            if (messages.isNotEmpty()) {
+                messagesList.scrollToPosition(messages.size - 1)
+            }
+        }
+private fun listenMessages() {
+    listener = getMessagesRef()
+        .orderBy("timestamp", Query.Direction.ASCENDING)
+        .addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                Toast.makeText(this, "Ошибка: ${error.message}", Toast.LENGTH_SHORT).show()
+                return@addSnapshotListener
+            }
+            if (snapshot == null) return@addSnapshotListener
+
+            val messages = mutableListOf<Message>()
+            for (doc in snapshot.documents) {
+                try {
+                    val id = doc.id
+                    val senderId = doc.getString("senderId") ?: ""
+                    val senderNick = doc.getString("senderNick") ?: "?"
+                    val encText = doc.getString("encryptedText") ?: ""
+                    val timestamp = doc.getLong("timestamp") ?: 0L
+                    val readBy = doc.get("readBy") as? List<*> ?: emptyList<Any>()
+
+                    val decrypted = Crypto.decrypt(encText, myKey)
+
+                    val msg = Message(id, senderId, senderNick, encText, timestamp)
+                    msg.decryptedText = if (decrypted.isEmpty()) "[не расшифровано]" else decrypted
+                    msg.isMine = (senderId == myId)
+                    // Прочитано, если партнёр есть в readBy
+                    msg.isRead = readBy.contains(partnerId)
+                    messages.add(msg)
+
+                    // Если это чужое сообщение и я его не читал — помечаю прочитанным
+                    if (senderId != myId && !readBy.contains(myId)) {
+                        getMessagesRef().document(id)
+                            .update("readBy", com.google.firebase.firestore.FieldValue.arrayUnion(myId))
+                    }
+                } catch (e: Exception) {
+                    // skip
+                }
+            }
+
+            adapter.setMessages(messages)
+            if (messages.isNotEmpty()) {
+                messagesList.scrollToPosition(messages.size - 1)
+            }
+        }
+}
     private fun sendMessage() {
         val text = messageInput.text.toString().trim()
         if (text.isEmpty()) return
