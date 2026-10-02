@@ -8,7 +8,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 
 class LoginActivity : AppCompatActivity() {
@@ -36,7 +35,6 @@ class LoginActivity : AppCompatActivity() {
 
         auth = FirebaseAuth.getInstance()
 
-        // Уже вошли — сразу в список чатов
         if (auth.currentUser != null
             && Prefs.getUserId(this).isNotEmpty()
             && Prefs.getNickname(this).isNotEmpty()
@@ -61,7 +59,6 @@ class LoginActivity : AppCompatActivity() {
         selectedAvatar = Prefs.getAvatar(this)
         avatarText.text = selectedAvatar
 
-        // Тап на аватар — меняет эмодзи
         avatarText.setOnClickListener {
             val curIndex = avatars.indexOf(selectedAvatar)
             avatarIndex = if (curIndex >= 0) (curIndex + 1) % avatars.size else 0
@@ -94,70 +91,53 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun loginAnonymously(nick: String, code: String) {
+        // 1. Анонимный вход
         auth.signInAnonymously()
-            .addOnCompleteListener { task ->
-                if (!task.isSuccessful) {
-                    statusText.text = "Ошибка входа: ${task.exception?.message}"
-                    enterBtn.isEnabled = true
-                    return@addOnCompleteListener
-                }
-
-                val user = auth.currentUser
+            .addOnSuccessListener { result ->
+                val user = result.user
                 if (user == null) {
                     statusText.text = "Не удалось получить пользователя"
                     enterBtn.isEnabled = true
-                    return@addOnCompleteListener
+                    return@addOnSuccessListener
                 }
 
                 val uid = user.uid
+                saveUserToFirestore(uid, nick, code)
+            }
+            .addOnFailureListener { e ->
+                statusText.text = "Ошибка входа: ${e.message}"
+                enterBtn.isEnabled = true
+            }
+    }
 
-                // Сохраняем локально
-                Prefs.setUserId(this, uid)
-                Prefs.setNickname(this, nick)
-                Prefs.setGroupCode(this, code)
-                Prefs.setAvatar(this, selectedAvatar)
+    private fun saveUserToFirestore(uid: String, nick: String, code: String) {
+        statusText.text = "Сохранение профиля..."
 
-                // Сохраняем пользователя в Firestore
-                val userData = hashMapOf(
-                    "nickname" to nick,
-                    "avatar" to selectedAvatar,
-                    "groupCode" to code,
-                    "createdAt" to System.currentTimeMillis(),
-                    "online" to true,
-                    "lastSeen" to System.currentTimeMillis()
-                )
+        // Сохраняем локально сразу (чтобы приложение не теряло данные)
+        Prefs.setUserId(this, uid)
+        Prefs.setNickname(this, nick)
+        Prefs.setGroupCode(this, code)
+        Prefs.setAvatar(this, selectedAvatar)
 
-                db.collection("users").document(uid)
-                    .set(userData)
-                    .addOnCompleteListener { t2 ->
-                        if (!t2.isSuccessful) {
-                            statusText.text = "Ошибка Firestore: ${t2.exception?.message}"
-                            enterBtn.isEnabled = true
-                            return@addOnCompleteListener
-                        }
+        val userData = hashMapOf(
+            "nickname" to nick,
+            "avatar" to selectedAvatar,
+            "groupCode" to code,
+            "createdAt" to System.currentTimeMillis(),
+            "online" to true,
+            "lastSeen" to System.currentTimeMillis()
+        )
 
-                        // Добавляем себя в группу
-                        val groupRef = db.collection("groups").document(code)
-                        groupRef.set(
-                            hashMapOf(
-                                "code" to code,
-                                "createdAt" to System.currentTimeMillis()
-                            )
-                        ).addOnCompleteListener {
-                            // Добавляем userId в массив members
-                            groupRef.update("members", FieldValue.arrayUnion(uid))
-                                .addOnCompleteListener { t3 ->
-                                    if (!t3.isSuccessful) {
-                                        statusText.text = "Ошибка группы: ${t3.exception?.message}"
-                                        enterBtn.isEnabled = true
-                                        return@addOnCompleteListener
-                                    }
-                                    statusText.text = "Успешно! Заходим..."
-                                    startActivity(Intent(this, ChatsActivity::class.java))
-                                    finish()
-                                }
-                        }
-                    }
+        db.collection("users").document(uid)
+            .set(userData)
+            .addOnSuccessListener {
+                statusText.text = "Успешно!"
+                startActivity(Intent(this, ChatsActivity::class.java))
+                finish()
+            }
+            .addOnFailureListener { e ->
+                statusText.text = "Ошибка Firestore: ${e.message}\n\nПроверь правила Firestore."
+                enterBtn.isEnabled = true
             }
     }
 }
